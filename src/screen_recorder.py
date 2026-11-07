@@ -280,9 +280,13 @@ class Main(QWidget):
         self.snipper.start(self.cb_delay.currentData() or 0, mode or self.cb_snip_mode.currentData())
 
     def snip_dir(self):
-        d = os.path.join(self.out_dir(), "Screenshots")
+        d = self.ed_snip_out.text().strip() or os.path.join(self.out_dir(), "Screenshots")
         os.makedirs(d, exist_ok=True)
         return d
+
+    def pick_snip_folder(self):
+        d = QFileDialog.getExistingDirectory(self, T("Chọn thư mục lưu ảnh"), self.snip_dir())
+        if d: self.ed_snip_out.setText(os.path.normpath(d))
 
     def on_snip(self, img):
         QGuiApplication.clipboard().setImage(img)
@@ -494,12 +498,19 @@ class Main(QWidget):
         PS.addStretch()
 
         # --- output ---
-        g, go = card(T("Lưu vào"), "save"); h = QHBoxLayout(); go.addLayout(h)
+        # video folder (Record tab) and screenshot folder (Snip tab) are set independently
+        g, go = card(T("Lưu video vào"), "save"); h = QHBoxLayout(); go.addLayout(h)
         self.ed_out = QLineEdit()
         b1 = QPushButton(I("folder"), T(" Chọn…")); b1.clicked.connect(self.pick_folder)
         b2 = QPushButton(I("folder-open"), T(" Mở thư mục")); b2.clicked.connect(lambda: os.startfile(self.out_dir()))
         h.addWidget(self.ed_out, 1); h.addWidget(b1); h.addWidget(b2)
-        L.addWidget(g)
+        PV.addWidget(g)
+        g, gsd = card(T("Lưu ảnh vào"), "save"); h = QHBoxLayout(); gsd.addLayout(h)
+        self.ed_snip_out = QLineEdit()
+        b1 = QPushButton(I("folder"), T(" Chọn…")); b1.clicked.connect(self.pick_snip_folder)
+        b2 = QPushButton(I("folder-open"), T(" Mở thư mục")); b2.clicked.connect(lambda: os.startfile(self.snip_dir()))
+        h.addWidget(self.ed_snip_out, 1); h.addWidget(b1); h.addWidget(b2)
+        PS.insertWidget(PS.count() - 2, g)       # above the "Snip now" row
         self.cards = [w for w in self.findChildren(QFrame) if w.objectName() == "card"]
 
         # --- controls bar ---
@@ -738,6 +749,8 @@ class Main(QWidget):
         self.chk_min.setChecked(b("minimize", True))
         self.chk_sys.setChecked(b("sys_audio", True)); self.chk_mic.setChecked(b("mic", False))
         self.ed_out.setText(s.value("out", default_out()))
+        # old versions saved screenshots in <video folder>\Screenshots: keep that as the default
+        self.ed_snip_out.setText(s.value("snip_out", "") or os.path.join(self.ed_out.text() or default_out(), "Screenshots"))
         reg = s.value("region", "")
         if reg:
             try: self.set_region([int(x) for x in str(reg).split(",")])
@@ -772,7 +785,7 @@ class Main(QWidget):
                          mic_dev=self.cb_mic.currentData(), monitor=self.cb_monitor.currentIndex(),
                          cursor=self.chk_cursor.isChecked(), countdown=self.chk_count.isChecked(),
                          minimize=self.chk_min.isChecked(), sys_audio=self.chk_sys.isChecked(), mic=self.chk_mic.isChecked(),
-                         out=self.ed_out.text(), mode=self.mode, snip_key=self.cb_snip_key.currentData(),
+                         out=self.ed_out.text(), snip_out=self.ed_snip_out.text(), mode=self.mode, snip_key=self.cb_snip_key.currentData(),
                          snip_delay=self.cb_delay.currentData(), snip_mode=self.cb_snip_mode.currentData(),
                          snip_edit=self.chk_snip_edit.isChecked(), snip_save=self.chk_snip_save.isChecked(),
                          snip_toast=self.chk_snip_toast.isChecked(), tab=self.stack.currentIndex(),
