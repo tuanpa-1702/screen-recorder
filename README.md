@@ -32,7 +32,7 @@
 
 ## Tải về & cài đặt
 
-1. Tải `Screen Recorder.exe` ở mục [Releases](../../releases) (kiểm tra SHA-256 trong `SHA256SUMS.txt`).
+1. Tải `ScreenRecorder-v1.0.1-win64.exe` ở mục [Releases](../../releases) (kiểm tra SHA-256 trong `SHA256SUMS.txt`).
 2. Chạy trực tiếp (portable – cài đặt lưu ở `ScreenRecorder.ini` cạnh file exe), **hoặc** bấm **Cài vào máy** trong app để cài vào `%LOCALAPPDATA%\Programs\Screen Recorder` (khởi động nhanh hơn, có lối tắt Start Menu/Desktop, gỡ trong *Settings › Apps*).
 
 Yêu cầu: Windows 10/11 64-bit. Hướng dẫn chi tiết: [docs/USER_GUIDE.md](docs/USER_GUIDE.md).
