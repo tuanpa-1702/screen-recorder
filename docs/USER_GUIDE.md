@@ -15,7 +15,7 @@
    - *Cửa sổ*: chọn cửa sổ trong danh sách (⟳ để làm mới). App quay đúng khu vực của cửa sổ đó.
 2. **Video**: độ phân giải, khung hình (fps), chất lượng, bộ mã hoá (H.264 CPU; NVENC/QuickSync/AMF nếu có), định dạng MP4 hoặc MKV (an toàn khi mất điện).
 3. **Âm thanh**: *Âm thanh hệ thống* (tiếng phát ra loa) và/hoặc *Micro*, chọn thiết bị; thanh xanh cho biết mức âm khi đang quay.
-4. **REC** (hoặc **F12**) để bắt đầu; **Tạm dừng** (Shift+F12); **DỪNG** (F12) để lưu. File `Rec_<ngày>_<giờ>.mp4` nằm ở thư mục *Lưu vào*.
+4. **REC** (hoặc **F12**) để bắt đầu; **Tạm dừng** (Shift+F12); **DỪNG** (F12) để lưu. File `Rec_<ngày>_<giờ>.mp4` nằm ở thư mục *Lưu video vào* (chỉnh ở cuối tab).
 
 ## 3. Chụp ảnh (tab *Chụp ảnh*)
 ![Chụp ảnh](screenshots/main_snip_vi.png)
@@ -24,7 +24,7 @@
   - Nếu chọn Print Screen mà Windows vẫn mở Snipping Tool: *Settings › Accessibility › Keyboard* › tắt *Use the Print screen key to open screen capture*.
 - **Chế độ**: vùng chữ nhật, **tự do** (kéo chuột theo hình bất kỳ), cửa sổ, toàn màn hình. Trong lúc chụp: `R` / `D` / `W` / `F` đổi chế độ, `Enter` chụp cả màn hình, `Esc` hoặc chuột phải để huỷ.
 - **Hẹn giờ** 3/5/10 giây để kịp mở menu cần chụp.
-- **Sau khi chụp**: ảnh luôn được copy vào bộ nhớ tạm (dán bằng Ctrl+V). Tuỳ chọn: mở trình chỉnh sửa, tự lưu vào `…\Screenshots`, hiện thông báo.
+- **Sau khi chụp**: ảnh luôn được copy vào bộ nhớ tạm (dán bằng Ctrl+V). Tuỳ chọn: mở trình chỉnh sửa, tự lưu, hiện thông báo. Thư mục lưu ảnh chỉnh ở ô *Lưu ảnh vào* (mặc định `…\Screen Recorder\Screenshots`), độc lập với thư mục video.
 - **Khởi động cùng Windows** (bản exe): chạy nền ở khay để phím tắt luôn sẵn sàng.
 
 ![Thông báo](screenshots/toast_vi.png)
