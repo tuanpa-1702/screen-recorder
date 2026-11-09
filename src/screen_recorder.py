@@ -9,7 +9,7 @@ from PySide6.QtGui import QPainter, QColor, QPen, QGuiApplication, QFont, QIcon,
 from PySide6.QtWidgets import (QApplication, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout, QLabel,
                                QPushButton, QComboBox, QCheckBox, QGroupBox, QSlider, QLineEdit,
                                QFileDialog, QMessageBox, QProgressBar, QRadioButton, QButtonGroup,
-                               QSystemTrayIcon, QMenu, QSpinBox, QFrame, QStackedWidget, QSizePolicy)
+                               QSystemTrayIcon, QMenu, QSpinBox, QFrame, QStackedWidget, QSizePolicy, QScrollArea)
 from PySide6.QtCore import QSize
 
 import rec_core
@@ -26,7 +26,7 @@ RUN_KEY = r"Software\Microsoft\Windows\CurrentVersion\Run"
 RUN_NAME = "TuanPA.ScreenRecorder"
 
 APP = "Screen Recorder"
-VER = "1.0.0"
+VER = "1.0.2"
 REPO_URL = "https://github.com/tuanpa-1702/screen-recorder"
 # The shipped exe is a small launcher that runs the app from a cache folder; it passes its own path here
 LAUNCHER = os.environ.get("SR_LAUNCHER") or (sys.executable if getattr(sys, "frozen", False) else None)
@@ -230,7 +230,45 @@ class Main(QWidget):
 
     # ---- tray / lifetime ----
     def show_main(self):
-        self.showNormal(); self.raise_(); self.activateWindow()
+        self.restore_win(); self.raise_(); self.activateWindow()
+
+    # ---- adaptive layout: the record page always fits the window without scrolling ----
+    def resizeEvent(self, e):
+        super().resizeEvent(e)
+        QTimer.singleShot(0, self.fit_layout); QTimer.singleShot(200, self.fit_layout)
+
+    def fit_layout(self):
+        if not hasattr(self, "v_grid"):
+            return
+        cols = 2 if self.width() >= 1150 else 1
+        if cols != self.v_cols:
+            self.v_cols = cols
+            for g in self.v_cards:
+                self.v_grid.removeWidget(g)
+            t, vid, aud, out = self.v_cards
+            if cols == 2:      # left: target + output, right: video + audio
+                self.v_grid.addWidget(t, 0, 0); self.v_grid.addWidget(out, 1, 0)
+                self.v_grid.addWidget(vid, 0, 1); self.v_grid.addWidget(aud, 1, 1)
+                self.v_grid.setColumnStretch(0, 1); self.v_grid.setColumnStretch(1, 1)
+                self.inner.setMaximumWidth(1500)
+            else:
+                for r, g in enumerate(self.v_cards):
+                    self.v_grid.addWidget(g, r, 0)
+                self.v_grid.setColumnStretch(1, 0)
+                self.inner.setMaximumWidth(980)
+        # compact spacing + shrink the monitor map until the page fits the visible height
+        avail = self.scroll.viewport().height()
+        for sp, mh in ((10, 140), (6, 140), (6, 110), (4, 90), (4, 70)):
+            for lay in (self.L, self.PV, self.v_grid):
+                lay.setSpacing(sp)
+            self.mon_map.setFixedHeight(mh)
+            self.inner.layout().activate()
+            if self.scroll.widget().minimumSizeHint().height() <= avail:
+                break
+
+    def restore_win(self):
+        # un-minimize but keep the maximized state
+        self.setWindowState(self.windowState() & ~Qt.WindowMinimized); self.show()
 
     def quit_app(self):
         self._quitting = True
@@ -238,6 +276,10 @@ class Main(QWidget):
 
     def set_tab(self, i):
         self.stack.setCurrentIndex(i)
+        for j in range(self.stack.count()):      # stack takes the height of the visible tab only
+            pol = QSizePolicy.Preferred if j == i else QSizePolicy.Ignored
+            self.stack.widget(j).setSizePolicy(pol, pol)
+        self.stack.adjustSize(); QTimer.singleShot(0, self.fit_layout)
         for j, b in enumerate(self.tab_btns):
             b.setChecked(j == i); b.setIcon(theme.icon(b.property("ic"), "white" if j == i else "#334155"))
 
@@ -327,10 +369,17 @@ class Main(QWidget):
     def build(self):
         I = theme.icon
         # content column: max ~980 px wide, centered, so a maximized window on a big screen stays tidy
-        outer = QHBoxLayout(self); outer.setContentsMargins(0, 0, 0, 0)
-        inner = QWidget(); inner.setMaximumWidth(980)
+        # whole content scrolls, so the window can be any size (REC never ends up off-screen)
+        top = QVBoxLayout(self); top.setContentsMargins(0, 0, 0, 0)
+        sa = self.scroll = QScrollArea(); sa.setWidgetResizable(True); sa.setFrameShape(QFrame.NoFrame)
+        sa.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        sa.setStyleSheet("QScrollArea{background:transparent}")
+        host = QWidget(); host.setObjectName("scrollhost"); host.setStyleSheet("#scrollhost{background:transparent}")
+        sa.setWidget(host); top.addWidget(sa)
+        outer = QHBoxLayout(host); outer.setContentsMargins(0, 0, 0, 0)
+        inner = self.inner = QWidget(); inner.setMaximumWidth(980)
         outer.addStretch(1); outer.addWidget(inner, 100); outer.addStretch(1)
-        L = QVBoxLayout(inner); L.setContentsMargins(16, 12, 16, 14); L.setSpacing(10)
+        L = self.L = QVBoxLayout(inner); L.setContentsMargins(16, 12, 16, 14); L.setSpacing(10)
 
         head = QHBoxLayout(); head.setSpacing(10)
         logo = QLabel(); logo.setPixmap(theme.app_icon(128).scaled(52, 52, Qt.KeepAspectRatio, Qt.SmoothTransformation))
@@ -363,7 +412,8 @@ class Main(QWidget):
             b.clicked.connect(lambda _=False, i=i: self.set_tab(i))
         L.addLayout(tabs)
         self.stack = QStackedWidget()
-        page_v = QWidget(); PV = QVBoxLayout(page_v); PV.setContentsMargins(0, 0, 0, 0); PV.setSpacing(10)
+        page_v = QWidget(); PV = self.PV = QVBoxLayout(page_v); PV.setContentsMargins(0, 0, 0, 0); PV.setSpacing(10)
+        self.v_cards = []
         page_s = QWidget(); PS = QVBoxLayout(page_s); PS.setContentsMargins(0, 0, 0, 0); PS.setSpacing(10)
         self.stack.addWidget(page_v); self.stack.addWidget(page_s)
         L.addWidget(self.stack)
@@ -414,7 +464,7 @@ class Main(QWidget):
         h3.addWidget(QLabel(T("Cửa sổ"))); h3.addWidget(self.cb_window, 1); h3.addWidget(self.btn_refresh)
         for w in (self.w_mon, self.w_reg, self.w_win):
             gl.addWidget(w)
-        PV.addWidget(g)
+        self.v_cards.append(g)
 
         # --- video ---
         g, gv = card("Video", "video"); gr = QGridLayout(); gr.setHorizontalSpacing(10); gr.setVerticalSpacing(8)
@@ -438,7 +488,7 @@ class Main(QWidget):
         chk_row.addStretch()
         gr.addLayout(chk_row, 3, 0, 1, 4)
         gr.setColumnStretch(1, 1); gr.setColumnStretch(3, 1)
-        PV.addWidget(g)
+        self.v_cards.append(g)
 
         # --- audio ---
         g, ga = card(T("Âm thanh"), "speaker"); gr = QGridLayout(); gr.setHorizontalSpacing(10); gr.setVerticalSpacing(8)
@@ -452,7 +502,7 @@ class Main(QWidget):
         gr.addWidget(self.chk_sys, 0, 0); gr.addWidget(self.cb_sys, 0, 1); gr.addWidget(self.lv_sys, 0, 2)
         gr.addWidget(self.chk_mic, 1, 0); gr.addWidget(self.cb_mic, 1, 1); gr.addWidget(self.lv_mic, 1, 2)
         gr.setColumnStretch(1, 1)
-        PV.addWidget(g)
+        self.v_cards.append(g)
 
         # --- snip settings (page 2) ---
         g, gs = card(T("Chụp ảnh màn hình"), "scissors")
@@ -504,7 +554,12 @@ class Main(QWidget):
         b1 = QPushButton(I("folder"), T(" Chọn…")); b1.clicked.connect(self.pick_folder)
         b2 = QPushButton(I("folder-open"), T(" Mở thư mục")); b2.clicked.connect(lambda: os.startfile(self.out_dir()))
         h.addWidget(self.ed_out, 1); h.addWidget(b1); h.addWidget(b2)
-        PV.addWidget(g)
+        self.v_cards.append(g)
+        # record cards: 1 column on narrow/portrait windows, 2 columns on wide ones (see fit_layout)
+        self.v_grid_w = QWidget(); self.v_grid = QGridLayout(self.v_grid_w)
+        self.v_grid.setContentsMargins(0, 0, 0, 0); self.v_grid.setSpacing(10)
+        PV.addWidget(self.v_grid_w)
+        self.mon_map_h = 140; self.v_cols = 0
         g, gsd = card(T("Lưu ảnh vào"), "save"); h = QHBoxLayout(); gsd.addLayout(h)
         self.ed_snip_out = QLineEdit()
         b1 = QPushButton(I("folder"), T(" Chọn…")); b1.clicked.connect(self.pick_snip_folder)
@@ -546,7 +601,7 @@ class Main(QWidget):
         lic.linkActivated.connect(self.open_link)
         L.addWidget(lic)
         L.addStretch(1)            # extra height goes here, never into the header
-        self.setMinimumWidth(640)
+        self.setMinimumSize(560, 360)
         self.set_dot(None)
 
     # ---- language / install ----
@@ -580,17 +635,18 @@ class Main(QWidget):
                 self.apply_autostart(False)
                 self.quit_app()
                 return
-            if not ask(self, T("Cài Screen Recorder cho tài khoản này (không cần quyền admin)?\n\nVị trí: %LOCALAPPDATA%\\Programs\\Screen Recorder\nTạo lối tắt ở Start Menu và Desktop."),
+            if not ask(self, T("Cài Screen Recorder cho tài khoản này (không cần quyền admin)?\n\nVị trí: %LOCALAPPDATA%\\Programs\\Screen Recorder\nTạo lối tắt ở Start Menu và Desktop, khởi động cùng Windows (tắt được ở tab Chụp ảnh)."),
                        T("Cài đặt"), T("Huỷ")):
                 return
             self.save()
             dst = installer.install(VER)
             self.update_install_btn()
+            # installed copy starts with Windows by default (tray only); can be turned off in the Snip tab
+            import winreg
+            with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_WRITE) as k:
+                winreg.SetValueEx(k, RUN_NAME, 0, winreg.REG_SZ, f'"{dst}" --tray')
+            self.chk_autostart.blockSignals(True); self.chk_autostart.setChecked(True); self.chk_autostart.blockSignals(False)
             if ask(self, T("Đã cài đặt xong. Mở bản đã cài ngay bây giờ?"), T("Có"), T("Không")):
-                if self._autostart_on():   # autostart now points to the installed copy
-                    import winreg
-                    with winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, RUN_KEY, 0, winreg.KEY_WRITE) as k:
-                        winreg.SetValueEx(k, RUN_NAME, 0, winreg.REG_SZ, f'"{dst}" --tray')
                 self.quit_app()
                 release_single_instance()
                 subprocess.Popen([dst], close_fds=True)
@@ -704,7 +760,7 @@ class Main(QWidget):
         self._ovs = ovs
 
     def _region_done(self, r):
-        self.showNormal(); self.activateWindow()
+        self.restore_win(); self.activateWindow()
         if r:
             self.set_region(r)
 
@@ -903,7 +959,7 @@ class Main(QWidget):
         self.btn_pause.setText(T(" Tạm dừng")); self.btn_pause.setIcon(theme.icon("pause"))
         self.set_inputs(True)
         self.tray.setToolTip(APP)
-        self.showNormal(); self.activateWindow()
+        self.restore_win(); self.activateWindow()
         if out:
             mb = os.path.getsize(out) / 1048576
             self.lbl_status.setText(T(f"✔ Đã lưu: {out}  ({mb:.1f} MB)") + (T(f"\n⚠ Âm thanh: {err}") if err else ""))
@@ -1086,7 +1142,10 @@ def start_main(geo=None, show=True):
     if geo is not None:
         w.setGeometry(geo)
     if show:
-        w.show()
+        if geo is None:
+            w.showMaximized()          # open full screen by default
+        else:
+            w.show()
     return w
 
 

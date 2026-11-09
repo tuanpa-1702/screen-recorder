@@ -37,8 +37,8 @@ EN = {
     "Huỷ": "Cancel", "Có": "Yes", "Không": "No",
     " Cài vào máy": " Install", " Gỡ cài đặt": " Uninstall", "Cài đặt vào máy": "Install on this PC",
     "Gỡ cài đặt": "Uninstall",
-    "Cài Screen Recorder cho tài khoản này (không cần quyền admin)?\n\nVị trí: %LOCALAPPDATA%\\Programs\\Screen Recorder\nTạo lối tắt ở Start Menu và Desktop.":
-        "Install Screen Recorder for this account (no admin needed)?\n\nLocation: %LOCALAPPDATA%\\Programs\\Screen Recorder\nCreates Start Menu and Desktop shortcuts.",
+    "Cài Screen Recorder cho tài khoản này (không cần quyền admin)?\n\nVị trí: %LOCALAPPDATA%\\Programs\\Screen Recorder\nTạo lối tắt ở Start Menu và Desktop, khởi động cùng Windows (tắt được ở tab Chụp ảnh).":
+        "Install Screen Recorder for this account (no admin needed)?\n\nLocation: %LOCALAPPDATA%\\Programs\\Screen Recorder\nCreates Start Menu and Desktop shortcuts and starts with Windows (can be turned off in the Snip tab).",
     "Cài đặt": "Install", "Đã cài đặt xong. Mở bản đã cài ngay bây giờ?": "Installed. Open the installed copy now?",
     "Gỡ Screen Recorder khỏi máy? (Video đã quay không bị xoá)": "Uninstall Screen Recorder? (Your recordings are kept)",
     "Gỡ": "Uninstall", "Đã gỡ cài đặt. Ứng dụng sẽ đóng.": "Uninstalled. The app will now close.",

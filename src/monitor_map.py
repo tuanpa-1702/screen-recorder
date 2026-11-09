@@ -55,7 +55,7 @@ class MonitorMap(QWidget):
     def __init__(self):
         super().__init__()
         self.mons, self.names, self.sel, self.hover = [], [], 0, -1
-        self.setMinimumHeight(132)
+        self.setFixedHeight(140)      # fixed: never stretched over the row below it
         self.setMouseTracking(True)
         self.setCursor(Qt.PointingHandCursor)
 

@@ -5,13 +5,13 @@
 blur/pixelate, crop) with undo/redo, auto-copy to clipboard, save."""
 import datetime, math, os
 
-from PySide6.QtCore import Qt, QPointF, QRectF, QTimer, Signal, QSize, QLineF
+from PySide6.QtCore import Qt, QPoint, QRect, QPointF, QRectF, QTimer, Signal, QSize, QLineF
 from PySide6.QtGui import (QPainter, QColor, QPen, QBrush, QPixmap, QImage, QPainterPath, QFont, QKeySequence,
                            QShortcut, QGuiApplication, QUndoStack, QUndoCommand, QPolygonF, QTextCursor)
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QGraphicsView, QGraphicsScene, QGraphicsItem,
                                QGraphicsPixmapItem, QGraphicsPathItem, QGraphicsRectItem, QGraphicsEllipseItem,
                                QGraphicsTextItem, QPushButton, QButtonGroup, QLabel, QSpinBox, QFrame, QColorDialog,
-                               QFileDialog, QComboBox, QToolButton, QMenu)
+                               QFileDialog, QComboBox, QToolButton, QMenu, QLayout)
 
 import theme
 from i18n import T
@@ -584,6 +584,41 @@ class Swatch(QPushButton):
                            f"QPushButton:checked{{border:3px solid #2563eb;}}")
 
 
+class FlowLayout(QLayout):
+    """Left-to-right layout that wraps to a new row when the window is too narrow (portrait screens)."""
+    def __init__(self, parent=None, spacing=6):
+        super().__init__(parent); self._items = []; self.setSpacing(spacing)
+
+    def addItem(self, it): self._items.append(it)
+    def count(self): return len(self._items)
+    def itemAt(self, i): return self._items[i] if 0 <= i < len(self._items) else None
+    def takeAt(self, i): return self._items.pop(i) if 0 <= i < len(self._items) else None
+    def expandingDirections(self): return Qt.Orientations(0)
+    def hasHeightForWidth(self): return True
+    def heightForWidth(self, w): return self._do(QRect(0, 0, w, 0), True)
+    def setGeometry(self, r): super().setGeometry(r); self._do(r, False)
+    def sizeHint(self): return self.minimumSize()
+
+    def minimumSize(self):
+        s = QSize()
+        for it in self._items:
+            s = s.expandedTo(it.minimumSize())
+        m = self.contentsMargins()
+        return s + QSize(m.left() + m.right(), m.top() + m.bottom())
+
+    def _do(self, r, test):
+        m = self.contentsMargins(); r = r.adjusted(m.left(), m.top(), -m.right(), -m.bottom())
+        x, y, lh, sp = r.x(), r.y(), 0, self.spacing()
+        for it in self._items:
+            sh = it.sizeHint()
+            if x + sh.width() > r.right() + 1 and lh > 0:
+                x, y, lh = r.x(), y + lh + sp, 0
+            if not test:
+                it.setGeometry(QRect(QPoint(x, y), sh))
+            x += sh.width() + sp; lh = max(lh, sh.height())
+        return y + lh - r.y() + m.top() + m.bottom()
+
+
 class Editor(QWidget):
     new_snip = Signal()
 
@@ -635,7 +670,7 @@ class Editor(QWidget):
             "QPushButton#step:hover{border-color:#60a5fa;background:#eff6ff}"
             "QLabel#val{min-width:44px;qproperty-alignment:AlignCenter;font-weight:600;background:transparent}"
             "QLabel#glbl{color:#64748b;font-size:8pt;background:transparent}")
-        h = QHBoxLayout(bar); h.setContentsMargins(10, 8, 10, 8); h.setSpacing(6)
+        h = FlowLayout(bar, 6); h.setContentsMargins(10, 8, 10, 8)
 
         def group(title=None):
             f = QFrame(); f.setObjectName("grp")
@@ -686,7 +721,6 @@ class Editor(QWidget):
             b.setToolTip(tip + " – " + T("Tô nền cho hình chữ nhật / elip")); b.setProperty("ic", ic)
             fg.addButton(b); self.fill_btns.append(b); gh.addWidget(b)
             b.clicked.connect(lambda _=False, i=i: self.set_fill(i))
-        h.addStretch()
 
         gh = group()
         for ic, tip, red in [("undo", T("Hoàn tác") + " (Ctrl+Z)", False), ("redo", T("Làm lại") + " (Ctrl+Y)", True)]:
